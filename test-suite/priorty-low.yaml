@@ -1,0 +1,11 @@
+queue: dev
+jobSetId: validation-suite
+jobId: priority-low
+priority: 1
+
+podSpec:
+  containers:
+  - name: low
+    image: busybox
+    command: ["sh","-c","echo Low priority job; sleep 120"]
+  restartPolicy: Never

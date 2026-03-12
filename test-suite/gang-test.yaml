@@ -1,0 +1,18 @@
+queue: dev
+jobSetId: validation-suite
+jobId: gang-test
+priority: 10
+
+podSpec:
+  containers:
+  - name: worker
+    image: busybox
+    command: ["sh","-c","echo Worker running; sleep 30"]
+    resources:
+      requests:
+        cpu: "1"
+        memory: "256Mi"
+  restartPolicy: Never
+
+gangScheduling:
+  cardinality: 3

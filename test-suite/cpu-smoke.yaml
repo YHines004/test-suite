@@ -1,0 +1,15 @@
+queue: dev
+jobSetId: validation-suite
+jobId: cpu-smoke
+priority: 10
+
+podSpec:
+  containers:
+  - name: cpu-smoke
+    image: busybox
+    command: ["sh","-c","echo CPU Smoke Test; sleep 10"]
+    resources:
+      requests:
+        cpu: "1"
+        memory: "128Mi"
+  restartPolicy: Never

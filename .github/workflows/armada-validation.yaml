@@ -1,0 +1,83 @@
+name: Armada Validation Suite
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev/testsuite
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-armada:
+
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-2
+      EKS_CLUSTER_NAME: tectonic-dev-cluster
+      OIDC_ROLE: ${{ secrets.OIDC_ROLE }}
+      ARMADA_SERVER: ${{ secrets.ARMADA_SERVER }}
+      ARMADA_TOKEN: ${{ secrets.ARMADA_TOKEN }}
+      LOOKOUT_URL: ${{ secrets.LOOKOUT_URL }}
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq python3 python3-pip
+          pip install requests
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ env.OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+          --region $AWS_REGION \
+          --name $EKS_CLUSTER_NAME
+
+      - name: Install armadactl
+        run: |
+          VERSION=$(curl -s https://api.github.com/repos/armadaproject/armada/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+          curl -fsSL https://github.com/armadaproject/armada/releases/download/v${VERSION}/armadactl_${VERSION}_linux_amd64.tar.gz -o armadactl.tar.gz
+          tar -xzf armadactl.tar.gz
+          chmod +x armadactl
+          sudo mv armadactl /usr/local/bin/
+
+      - name: Configure armadactl
+        run: |
+          mkdir -p ~/.armada
+
+          cat <<EOF > ~/.armada/config.yaml
+          currentContext: main
+          contexts:
+            main:
+              armadaUrl: "${ARMADA_SERVER}"
+              bearerToken: "${ARMADA_TOKEN}"
+          EOF
+
+      - name: Submit workloads
+        run: |
+          chmod +x scripts/submit_tests.sh
+          ./scripts/submit_tests.sh
+
+      - name: Wait for completion
+        run: |
+          python scripts/wait_for_completion.py
+
+      - name: Validate results
+        run: |
+          python scripts/check_results.py
+
+      - name: Validate Lookout visibility
+        run: |
+          python scripts/validate_lookout.py

@@ -1,0 +1,261 @@
+apiVersion: install.armadaproject.io/v1alpha1
+kind: ArmadaServer
+metadata:
+  name: armada-server
+  namespace: armada
+spec:
+  pulsarInit: false
+  clusterIssuer: aws-load-balancer-selfsigned-issuer
+  hostNames:
+    - armada.dev.tectonic.alcps.co
+  ingress:
+    ingressClass: alb
+    annotations:
+      alb.ingress.kubernetes.io/backend-protocol-version: GRPC
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-3-2021-06
+  replicas: 1
+  image:
+    repository: gresearch/armada-server
+    tag: "0.20.36"
+  applicationConfig:
+    httpNodePort: 30001
+    grpcNodePort: 30002
+    schedulerApiConnection:
+      armadaUrl: "armada-scheduler.armada.svc.cluster.local:50051"
+      forceNoTls: true
+    corsAllowedOrigins:
+      - "https://armada-lookout.dev.tectonic.alcps.co"
+      - "https://armada.dev.tectonic.alcps.co"
+      - "https://armada-api.dev.tectonic.alcps.co"
+      - "http://localhost:3000"
+      - "http://localhost:8089"
+      - "http://localhost:10000"
+      - "http://localhost:30000"
+    auth:
+      anonymousAuth: false
+      openIdAuth:
+        providerUrl: "https://login.microsoftonline.com/c52c5bf7-7385-429c-8c89-9533a69e17b7/v2.0"
+        clientId: "db3f98ab-fb3e-4d9a-8bde-8d6f215bc2ab"
+        groupsClaim: "groups"
+      permissionGroupMapping:
+        submit_any_jobs: ["everyone"]
+        create_queue: ["everyone"]
+        delete_queue: ["everyone"]
+        cancel_any_jobs: ["everyone"]
+        reprioritize_any_jobs: ["everyone"]
+        watch_all_events: ["everyone"]
+        execute_jobs: ["everyone"]
+    eventsApiRedis:
+      addrs:
+        - armada-redis-master.data.svc.cluster.local:6379
+    postgres:
+      connection:
+        host: armada-postgresql.data.svc.cluster.local
+        port: 5432
+        user: armada
+        password: armada
+        dbname: lookout
+        sslmode: disable
+    queryapi:
+      postgres:
+        connection:
+          host: armada-postgresql.data.svc.cluster.local
+          port: 5432
+          user: armada
+          password: armada
+          dbname: lookout
+          sslmode: disable
+    pulsar:
+      URL: pulsar://armada-pulsar-broker.data.svc.cluster.local:6650
+    redis:
+      addrs:
+        - armada-redis-master.data.svc.cluster.local:6379
+---
+apiVersion: install.armadaproject.io/v1alpha1
+kind: Executor
+metadata:
+  name: armada-executor
+  namespace: armada
+spec:
+  image:
+    repository: gresearch/armada-executor
+    tag: "0.20.36"
+  applicationConfig:
+    clusterId: 
+    executorApiConnection:
+      armadaUrl: armada-scheduler.armada.svc.cluster.local:50051
+      forceNoTls: true
+    metric:
+      port: 9001
+---
+apiVersion: install.armadaproject.io/v1alpha1
+kind: Lookout
+metadata:
+  name: armada-lookout
+  namespace: armada
+spec:
+  replicas: 1
+  clusterIssuer: aws-load-balancer-selfsigned-issuer
+  hostNames:
+    - armada-lookout.dev.tectonic.alcps.co
+  ingress:
+    ingressClass: alb
+    annotations:
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-3-2021-06
+  image:
+    repository: gresearch/armada-lookout
+    tag: "3145d84e3ef394fa5441691e8b9534237607a893"
+  prometheus:
+    enabled: false
+  applicationConfig:
+    httpNodePort: 30000
+    # See https://github.com/armadaproject/armada/blob/master/config/lookoutv2/config.yaml
+    # for the full list of configuration options.
+    apiPort: 8080
+    corsAllowedOrigins:
+      - "https://armada-lookout.dev.tectonic.alcps.co"
+      - "https://armada.dev.tectonic.alcps.co"
+      - "http://localhost"
+    uiConfig:
+      armadaApiBaseUrl: "https://armada-api.dev.tectonic.alcps.co"
+      oidcEnabled: true
+      oidc:
+        authority: "https://login.microsoftonline.com/c52c5bf7-7385-429c-8c89-9533a69e17b7/v2.0"
+        clientId: "db3f98ab-fb3e-4d9a-8bde-8d6f215bc2ab"
+        scope: "openid profile email api://db3f98ab-fb3e-4d9a-8bde-8d6f215bc2ab/Armada.api"
+        redirect_uri: "https://armada-lookout.dev.tectonic.alcps.co/oidc"
+        loadUserInfo: false
+      analytics:
+        scripts:
+          - attributes:
+              src: "https://umami.dev.tectonic.alcps.co/t"
+              data-website-id: "b5116280-3614-4e9d-9cbd-f0b93f7e6bb6"
+        provider: umami
+        userIdentify:
+          trackUsers: true
+    postgres:
+      connection:
+        host: armada-postgresql.data.svc.cluster.local
+        port: 5432
+        user: armada
+        password: armada
+        dbname: lookout
+        sslmode: disable
+    auth:
+      anonymousAuth: false
+      openIdAuth:
+        providerUrl: "https://login.microsoftonline.com/c52c5bf7-7385-429c-8c89-9533a69e17b7/v2.0"
+        clientId: "db3f98ab-fb3e-4d9a-8bde-8d6f215bc2ab"
+        groupsClaim: "groups"
+      permissionGroupMapping:
+        view_jobs: ["everyone"]
+        cancel_jobs: ["everyone"]
+---
+apiVersion: install.armadaproject.io/v1alpha1
+kind: LookoutIngester
+metadata:
+  name: armada-lookout-ingester
+  namespace: armada
+spec:
+  image:
+    repository: gresearch/armada-lookout-ingester
+    tag: "0.20.36"
+  applicationConfig:
+    postgres:
+      connection:
+        host: armada-postgresql.data.svc.cluster.local
+        port: 5432
+        user: armada
+        password: armada
+        dbname: lookout
+        sslmode: disable
+    pulsar:
+      URL: pulsar://armada-pulsar-broker.data.svc.cluster.local:6650
+---
+apiVersion: install.armadaproject.io/v1alpha1
+kind: Scheduler
+metadata:
+  name: armada-scheduler
+  namespace: armada
+spec:
+  replicas: 1
+  clusterIssuer: aws-load-balancer-selfsigned-issuer
+  hostNames:
+    - armada-scheduler.dev.tectonic.alcps.co
+  ingress:
+    ingressClass: alb
+    annotations:
+      alb.ingress.kubernetes.io/backend-protocol-version: GRPC
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-3-2021-06
+  image:
+    repository: gresearch/armada-scheduler
+    tag: "0.20.36"
+  applicationConfig:
+    grpc:
+      port: 50051
+    auth:
+      anonymousAuth: true
+      permissionGroupMapping:
+        execute_jobs: ["everyone"]
+    armadaApi:
+      armadaUrl: armada-server.armada.svc.cluster.local:50051
+      forceNoTls: true
+    pulsar:
+      URL: pulsar://armada-pulsar-broker.data.svc.cluster.local:6650
+    postgres:
+      connection:
+        host: armada-postgresql.data.svc.cluster.local
+        port: 5432
+        user: armada
+        password: armada
+        dbname: scheduler
+        sslmode: disable
+---
+apiVersion: install.armadaproject.io/v1alpha1
+kind: SchedulerIngester
+metadata:
+  name: armada-scheduler-ingester
+  namespace: armada
+spec:
+  replicas: 1
+  image:
+    repository: gresearch/armada-scheduler-ingester
+    tag: "0.20.36"
+  applicationConfig:
+    postgres:
+      connection:
+        host: armada-postgresql.data.svc.cluster.local
+        port: 5432
+        user: armada
+        password: armada
+        dbname: scheduler
+        sslmode: disable
+    pulsar:
+      URL: pulsar://armada-pulsar-broker.data.svc.cluster.local:6650
+---
+apiVersion: install.armadaproject.io/v1alpha1
+kind: EventIngester
+metadata:
+  name: armada-event-ingester
+  namespace: armada
+spec:
+  replicas: 1
+  image:
+    repository: gresearch/armada-event-ingester
+    tag: "0.20.36"
+  applicationConfig:
+    pulsar:
+      URL: pulsar://armada-pulsar-broker.data.svc.cluster.local:6650
+    redis:
+      addrs:
+        - armada-redis-master.data.svc.cluster.local:6379

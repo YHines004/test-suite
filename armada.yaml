@@ -37,8 +37,8 @@ spec:
     auth:
       anonymousAuth: false
       openIdAuth:
-        providerUrl: "https://login.microsoftonline.com/c52c5bf7-7385-429c-8c89-9533a69e17b7/v2.0"
-        clientId: "db3f98ab-fb3e-4d9a-8bde-8d6f215bc2ab"
+        providerUrl: "https://login.microsoftonline.com/<>/v2.0"
+        clientId: "<clientId>"
         groupsClaim: "groups"
       permissionGroupMapping:
         submit_any_jobs: ["everyone"]
@@ -127,16 +127,16 @@ spec:
       armadaApiBaseUrl: "https://armada-api.dev.tectonic.alcps.co"
       oidcEnabled: true
       oidc:
-        authority: "https://login.microsoftonline.com/c52c5bf7-7385-429c-8c89-9533a69e17b7/v2.0"
-        clientId: "db3f98ab-fb3e-4d9a-8bde-8d6f215bc2ab"
-        scope: "openid profile email api://db3f98ab-fb3e-4d9a-8bde-8d6f215bc2ab/Armada.api"
+        authority: "https://login.microsoftonline.com/<>/v2.0"
+        clientId: "<clientid>"
+        scope: "openid profile email api://<clientid>/Armada.api"
         redirect_uri: "https://armada-lookout.dev.tectonic.alcps.co/oidc"
         loadUserInfo: false
       analytics:
         scripts:
           - attributes:
               src: "https://umami.dev.tectonic.alcps.co/t"
-              data-website-id: "b5116280-3614-4e9d-9cbd-f0b93f7e6bb6"
+              data-website-id: "<>"
         provider: umami
         userIdentify:
           trackUsers: true
@@ -151,8 +151,8 @@ spec:
     auth:
       anonymousAuth: false
       openIdAuth:
-        providerUrl: "https://login.microsoftonline.com/c52c5bf7-7385-429c-8c89-9533a69e17b7/v2.0"
-        clientId: "db3f98ab-fb3e-4d9a-8bde-8d6f215bc2ab"
+        providerUrl: "https://login.microsoftonline.com/<>/v2.0"
+        clientId: "<clientid>
         groupsClaim: "groups"
       permissionGroupMapping:
         view_jobs: ["everyone"]
